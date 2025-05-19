@@ -171,3 +171,47 @@ def test_model_reproducibility(sample_data, preprocessor):
     assert np.array_equal(
         predictions1, predictions2
     ), "モデルの予測結果に再現性がありません"
+
+
+def test_inference_time_reproducibility(sample_data, preprocessor):
+    """モデルの再現性を検証"""
+    # データの分割
+    X = sample_data.drop("Survived", axis=1)
+    y = sample_data["Survived"].astype(int)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    # 同じパラメータで２つのモデルを作成
+    model1 = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor),
+            ("classifier", RandomForestClassifier(n_estimators=100, random_state=42)),
+        ]
+    )
+
+    model2 = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor),
+            ("classifier", RandomForestClassifier(n_estimators=100, random_state=42)),
+        ]
+    )
+
+    # 学習
+    model1.fit(X_train, y_train)
+    model2.fit(X_train, y_train)
+
+    # 時間が大きく変わらないことを確認
+    start_time1 = time.time()
+    model1.predict(X_test)
+    end_time1 = time.time()
+    inference_time1 = end_time1 - start_time1
+
+    start_time2 = time.time()
+    model2.predict(X_test)
+    end_time2 = time.time()
+    inference_time2 = end_time2 - start_time2
+
+    assert (
+        abs(inference_time2 - inference_time1) < 0.1
+    ), "モデルの実行時間に再現性がありません"
